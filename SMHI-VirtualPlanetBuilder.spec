@@ -1,7 +1,7 @@
 %define appname SMHI-VirtualPlanetBuilder
 %define name SMHI-VirtualPlanetBuilder
 %define version 1.1.0
-%define release 1.2
+%define release 1.4
 %define vendor	smhi.se
 
 Summary: Systemd unit file for %{appname}
@@ -75,6 +75,10 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Mon Jul  8 2019 Yngve Einarsson <Yngve.Einarsson@smhi.se>
+- OpenSceneGraph 3.6.3
+* Wed May  9 2018 Yngve Einarsson <Yngve.Einarsson@smhi.se>
+- Clean build
 * Mon Apr 23 2018 Yngve Einarsson <Yngve.Einarsson@smhi.se>
 - OpenSceneGraph 3.6.0
 * Thu Apr 6 2017 Yngve Einarsson <Yngve.Einarsson@smhi.se>

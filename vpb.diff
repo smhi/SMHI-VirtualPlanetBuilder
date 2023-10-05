@@ -1,0 +1,207 @@
+diff --git a/CMakeModules/FindGDAL.cmake b/CMakeModules/FindGDAL.cmake
+index 6cf4c89..2d5dbe6 100644
+--- a/CMakeModules/FindGDAL.cmake
++++ b/CMakeModules/FindGDAL.cmake
+@@ -19,10 +19,19 @@
+ # This makes the presumption that you are include gdal.h like
+ # #include "gdal.h"
+ 
++# prefer FindGDAL from cmake distribution
++# don,t work on redhat ?
++#if(EXISTS ${CMAKE_ROOT}/Modules/FindGDAL.cmake)
++#  include(${CMAKE_ROOT}/Modules/FindGDAL.cmake)
++#
++#  if(GDAL_FOUND)
++#    return()
++#  endif()
++#endif()
++
+ FIND_PATH(GDAL_INCLUDE_DIR gdal.h
+   PATHS
+   $ENV{GDAL_DIR}
+-  ${3rdPartyRoot}
+   NO_DEFAULT_PATH
+     PATH_SUFFIXES include
+ )
+@@ -55,23 +64,18 @@ FIND_PATH(GDAL_INCLUDE_DIR gdal.h
+   /opt/include/gdal
+   /opt/include/GDAL
+   /opt/include
+-  c:/Program Files/FWTools2.1.0/include
+ )
+ 
+ FIND_LIBRARY(GDAL_LIBRARY 
+   NAMES gdal gdal_i gdal1.7.0 gdal1.6.0 gdal1.5.0 gdal1.4.0 gdal1.3.2 GDAL
+   PATHS
+-  c:/Program Files/FWTools2.1.0/lib
+   $ENV{GDAL_DIR}
+-  ${3rdPartyRoot}
+   NO_DEFAULT_PATH
+   PATH_SUFFIXES lib64 lib
+ )
+ FIND_LIBRARY(GDAL_LIBRARY 
+   NAMES gdal gdal_i gdal1.7.0 gdal1.6.0 gdal1.5.0 gdal1.4.0 gdal1.3.2 GDAL
+   PATHS ${CMAKE_PREFIX_PATH} # Unofficial: We are proposing this.
+-   c:/Program Files/FWTools2.1.0/lib
+-   ${3rdPartyRoot}
+     NO_DEFAULT_PATH
+     PATH_SUFFIXES lib64 lib
+ )
+@@ -93,6 +97,8 @@ FIND_LIBRARY(GDAL_LIBRARY
+ 
+ SET(GDAL_FOUND "NO")
+ IF(GDAL_LIBRARY AND GDAL_INCLUDE_DIR)
++  MESSAGE("GDAL FOUND " "${GDAL_LIBRARY}")
++  MESSAGE("${GDAL_INCLUDE_DIR}")
+   SET(GDAL_FOUND "YES")
+ ENDIF(GDAL_LIBRARY AND GDAL_INCLUDE_DIR)
+ 
+diff --git a/applications/CMakeLists.txt b/applications/CMakeLists.txt
+index fa50e4d..3532554 100644
+--- a/applications/CMakeLists.txt
++++ b/applications/CMakeLists.txt
+@@ -17,7 +17,7 @@ SET(OPENSCENEGRAPH_APPLICATION_DIR ${PROJECT_SOURCE_DIR})
+ SET(TARGET_DEFAULT_PREFIX "application_")
+ SET(TARGET_DEFAULT_LABEL_PREFIX "Applications")
+ SET(TARGET_COMMON_LIBRARIES 
+-    vpb 
++    vpb
+ )
+ 
+ ADD_SUBDIRECTORY(osgdem)
+diff --git a/include/vpb/SpatialProperties b/include/vpb/SpatialProperties
+index 7244966..bc26c12 100644
+--- a/include/vpb/SpatialProperties
++++ b/include/vpb/SpatialProperties
+@@ -202,7 +202,8 @@ struct VPB_EXPORT SpatialProperties
+     };
+ 
+     SpatialProperties():
+-        _dataType(RASTER),
++        _cs(),
++		_dataType(RASTER),
+         _numValuesX(0),
+         _numValuesY(0),
+         _numValuesZ(0) {}
+diff --git a/src/vpb/MachinePool.cpp b/src/vpb/MachinePool.cpp
+index 0af5aa7..2de6f93 100644
+--- a/src/vpb/MachinePool.cpp
++++ b/src/vpb/MachinePool.cpp
+@@ -630,7 +630,7 @@ bool MachinePool::read(const std::string& filename)
+             if (fr.read("file",readFilename))
+             {
+                 read(readFilename);
+-                ++itrAdvanced;
++                itrAdvanced = true;
+             }
+         
+             if (fr.matchSequence("Machine {"))
+diff --git a/src/vpb/Source.cpp b/src/vpb/Source.cpp
+index 07878f1..22bf33b 100644
+--- a/src/vpb/Source.cpp
++++ b/src/vpb/Source.cpp
+@@ -647,16 +647,23 @@ public:
+             log(osg::NOTICE,"Warning: no target coordinate system to reproject from.");
+             return false;
+         }
+-
++		if (sourceCS->getCoordinateSystem().empty()) {
++			log(osg::NOTICE,"Warning: empty source projection.");
++            return false;
++		}
++		if (destinationCS->getCoordinateSystem().empty()) {
++			log(osg::NOTICE,"Warning: empty destination projection.");
++            return false;
++		}
+         char* source_projection_string = strdup(sourceCS->getCoordinateSystem().c_str());
+         char* importString = source_projection_string;
+         OGRSpatialReference* sourceProjection = new OGRSpatialReference;
+-        sourceProjection->importFromWkt(&importString);
++        sourceProjection->importFromWkt((const char **)&importString);
+ 
+         char* destination_projection_string = strdup(destinationCS->getCoordinateSystem().c_str());
+         importString = destination_projection_string;
+         OGRSpatialReference* destinationProjection = new OGRSpatialReference;
+-        destinationProjection->importFromWkt(&importString);
++        destinationProjection->importFromWkt((const char **)&importString);
+ 
+         OGRCoordinateTransformation* ct =  OGRCreateCoordinateTransformation( sourceProjection, destinationProjection );
+ 
+diff --git a/src/vpb/SpatialProperties.cpp b/src/vpb/SpatialProperties.cpp
+index 69bc77c..d26e87a 100644
+--- a/src/vpb/SpatialProperties.cpp
++++ b/src/vpb/SpatialProperties.cpp
+@@ -26,13 +26,14 @@ using namespace vpb;
+ CoordinateSystemType vpb::getCoordinateSystemType(const osg::CoordinateSystemNode* lhs)
+ {
+     if (!lhs) return PROJECTED;
++	if (lhs->getCoordinateSystem().empty()) return PROJECTED;
+ 
+     // set up LHS SpatialReference
+     char* projection_string = strdup(lhs->getCoordinateSystem().c_str());
+     char* importString = projection_string;
+     
+     OGRSpatialReference lhsSR;
+-    lhsSR.importFromWkt(&importString);
++    lhsSR.importFromWkt((const char **)&importString);
+     
+      
+     
+@@ -88,12 +89,12 @@ double vpb::getLinearUnits(const osg::CoordinateSystemNode* lhs)
+     char* importString = projection_string;
+     
+     OGRSpatialReference lhsSR;
+-    lhsSR.importFromWkt(&importString);
++    lhsSR.importFromWkt((const char **)&importString);
+     
+     free(projection_string);
+ 
+     char* str;
+-    double result = lhsSR.GetLinearUnits(&str);
++    double result = lhsSR.GetLinearUnits((const char **)&str);
+     log(osg::INFO,"lhsSR.GetLinearUnits(%s) %f",str,result);
+ 
+     log(osg::INFO,"lhsSR.IsGeographic() %d",lhsSR.IsGeographic());
+@@ -125,7 +126,7 @@ bool vpb::areCoordinateSystemEquivalent(const osg::CoordinateSystemNode* lhs,con
+     char* importString = projection_string;
+     
+     OGRSpatialReference lhsSR;
+-    lhsSR.importFromWkt(&importString);
++    lhsSR.importFromWkt((const char **)&importString);
+     
+     free(projection_string);
+ 
+@@ -134,7 +135,7 @@ bool vpb::areCoordinateSystemEquivalent(const osg::CoordinateSystemNode* lhs,con
+     importString = projection_string;
+ 
+     OGRSpatialReference rhsSR;
+-    rhsSR.importFromWkt(&importString);
++    rhsSR.importFromWkt((const char **)&importString);
+ 
+     free(projection_string);
+     
+@@ -163,7 +164,10 @@ void SpatialProperties::computeExtents()
+     else
+         _extents.expandBy( osg::Vec3(_numValuesX,_numValuesY,0.0)*_geoTransform);
+      
+-    _extents._isGeographic = getCoordinateSystemType(_cs.get())==GEOGRAPHIC;
++	if (_cs.valid())
++		_extents._isGeographic = getCoordinateSystemType(_cs.get())==GEOGRAPHIC;
++	else
++		_extents._isGeographic = false;
+ 
+     log(osg::INFO,"DataSet::SpatialProperties::computeExtents() is geographic %d",_extents._isGeographic);
+ }
+diff --git a/src/vpb/TaskManager.cpp b/src/vpb/TaskManager.cpp
+index 8732f5f..b703772 100644
+--- a/src/vpb/TaskManager.cpp
++++ b/src/vpb/TaskManager.cpp
+@@ -854,7 +854,7 @@ bool TaskManager::readTasks(const std::string& filename)
+             {
+                 nextTaskSet();
+                 readTasks(readFilename);
+-                ++itrAdvanced;
++                itrAdvanced=true;
+             }
+ 
+             Task* task = readTask(fr, itrAdvanced);

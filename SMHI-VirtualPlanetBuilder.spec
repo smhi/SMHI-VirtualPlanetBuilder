@@ -1,7 +1,7 @@
 %define appname SMHI-VirtualPlanetBuilder
 %define name SMHI-VirtualPlanetBuilder
 %define version 1.1.0
-%define release 1.5
+%define release 1.7.9
 %define vendor	smhi.se
 
 Summary: Systemd unit file for %{appname}
@@ -24,7 +24,7 @@ osgQt lib and executables %{appname}
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/usr
 cd $RPM_BUILD_ROOT/usr
-tar xvzf $RPM_SOURCE_DIR/SMHI-VirtualPlanetBuilder.tar.gz
+tar xvzf $RPM_SOURCE_DIR/SMHI-VirtualPlanetBuilder/SMHI-VirtualPlanetBuilder.tar.gz
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -75,6 +75,18 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Thu Oct 5 2023 Yngve Einarsson <Yngve.Einarsson@smhi.se>
+- ELIN 6.
+* Thu Feb 2 2023 Yngve Einarsson <Yngve.Einarsson@smhi.se>
+- Bugfix increment boolean.
+* Mon Jun 7 2021 Yngve Einarsson <Yngve.Einarsson@smhi.se>
+- Elin5. Using gdal32.
+* Mon Jan 25 2021 Yngve Einarsson <Yngve.Einarsson@smhi.se>
+- Bug fixed
+* Fri Jan 22 2021 Yngve Einarsson <Yngve.Einarsson@smhi.se>
+- Elin 5 rebuild
+* Thu Mar 12 2020 Yngve Einarsson <Yngve.Einarsson@smhi.se>
+- Elin 5
 * Mon Nov  4 2019 Yngve Einarsson <Yngve.Einarsson@smhi.se>
 - OpenSceneGraph 3.7.0 master
 * Mon Jul  8 2019 Yngve Einarsson <Yngve.Einarsson@smhi.se>
